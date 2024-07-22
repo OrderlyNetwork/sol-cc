@@ -5,14 +5,12 @@ pragma solidity ^0.8.22;
 import { SolCC } from "../SolCC.sol";
 import { ILedger, AccountDepositSol, AccountWithdrawSol, WithdrawDataSol } from "../interface/ILedger.sol";
 import { Utils } from "../library/Utils.sol";
+import { ISolCC } from "../interface/ISolCC.sol";
 
-contract SolCCMock is SolCC {
+contract SolCCMock is SolCC, ISolCC {
     uint64 public depositNonce;
     uint256 public constant SOL_CHAIN_ID = 902902902; // solana chain id for devnet
-    modifier onlyLedger() {
-        require(msg.sender == address(ledger), "Only ledger can call this function");
-        _;
-    }
+
     function withdraw(WithdrawDataSol calldata _withdrawData) external onlyLedger {
         AccountWithdrawSol memory withdrawFinishData = AccountWithdrawSol(
             Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
@@ -40,12 +38,12 @@ contract SolCCMock is SolCC {
             Utils.calculateStringHash(token),
             SOL_CHAIN_ID,
             uint128(tokenAmount),
-            _updateDepositNonce()
+            _newDepositNonce()
         );
         ledger.accountDepositSol(depositData);
     }
 
-    function _updateDepositNonce() internal returns (uint64) {
+    function _newDepositNonce() internal returns (uint64) {
         return ++depositNonce;
     }
 }

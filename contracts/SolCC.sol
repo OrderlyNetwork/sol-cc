@@ -12,6 +12,11 @@ contract SolCC is OAppUpgradeable {
     mapping(uint32 => uint256) public eidToChainId;
     mapping(address => bool) public trustCaller;
     ILedger public ledger;
+
+    modifier onlyLedger() {
+        require(msg.sender == address(ledger), "Only ledger can call this function");
+        _;
+    }
     /**
      * @dev Disable the initializer on the implementation contract
      */
