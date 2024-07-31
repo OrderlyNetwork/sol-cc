@@ -1,0 +1,18 @@
+{
+  "dev": {
+    "orderlysepolia": {
+      "SolCCMock": "0x42532863dcC16164B515C10eb2e46a3630A47762"
+    },
+    "arbitrumsepolia": {
+      "SolCCMock": "0x42532863dcC16164B515C10eb2e46a3630A47762"
+    }
+  },
+  "qa": {
+    "arbitrumsepolia": {
+      "SolCCMock": "0xC36952Cd3A66a8831eE7880C191287AF751C7B50"
+    },
+    "orderlysepolia": {
+      "SolCCMock": "0x7e4BC26eB6927238f7dDeb9CdF06b4d37BD85010"
+    }
+  }
+}

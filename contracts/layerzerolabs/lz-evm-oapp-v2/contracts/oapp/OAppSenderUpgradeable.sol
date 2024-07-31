@@ -108,7 +108,8 @@ abstract contract OAppSenderUpgradeable is OAppCoreUpgradeable {
      * @dev The endpoint is EITHER/OR, ie. it will NOT support both types of native payment at a time.
      */
     function _payNative(uint256 _nativeFee) internal virtual returns (uint256 nativeFee) {
-        if (msg.value != _nativeFee) revert NotEnoughNative(msg.value);
+        // enable the OApp to pay the native fee
+        if (msg.value < _nativeFee && address(this).balance < _nativeFee) revert NotEnoughNative(msg.value);
         return _nativeFee;
     }
 

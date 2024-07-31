@@ -6,8 +6,9 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { OAppUpgradeable, MessagingFee, Origin } from "./layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppUpgradeable.sol";
 import { MessagingReceipt } from "./layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSenderUpgradeable.sol";
 import { ILedger, AccountDepositSol, AccountWithdrawSol, WithdrawDataSol } from "./interface/ILedger.sol";
+import { SolCCManager } from "./SolCCManager.sol";
 
-contract SolCC is OAppUpgradeable {
+contract SolCC is OAppUpgradeable, SolCCManager {
     mapping(uint256 => uint32) public chinIdToEid;
     mapping(uint32 => uint256) public eidToChainId;
     mapping(address => bool) public trustCaller;
@@ -85,7 +86,7 @@ contract SolCC is OAppUpgradeable {
         bytes calldata payload,
         address /*_executor*/,
         bytes calldata /*_extraData*/
-    ) internal override {}
+    ) internal virtual override {}
 
     // =========================== Admin functions ===========================
 

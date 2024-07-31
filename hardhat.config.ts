@@ -10,8 +10,8 @@ import 'hardhat-contract-sizer'
 import '@nomiclabs/hardhat-ethers'
 import '@layerzerolabs/toolbox-hardhat'
 import { HardhatUserConfig, HttpNetworkAccountsUserConfig } from 'hardhat/types'
-
 import { EndpointId } from '@layerzerolabs/lz-definitions'
+import "./tasks/tasks"
 
 // Set your preferred authentication method
 //
@@ -35,9 +35,6 @@ if (accounts == null) {
 }
 
 const config: HardhatUserConfig = {
-    paths: {
-        cache: 'cache/hardhat',
-    },
     solidity: {
         compilers: [
             {
@@ -52,26 +49,38 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
+        
         sepolia: {
             eid: EndpointId.SEPOLIA_V2_TESTNET,
-            url: process.env.RPC_URL_SEPOLIA || 'https://rpc.sepolia.org/',
+            url: process.env.SEPOLIA_RPC_URL,
             accounts,
         },
-        fuji: {
-            eid: EndpointId.AVALANCHE_V2_TESTNET,
-            url: process.env.RPC_URL_FUJI || 'https://rpc.ankr.com/avalanche_fuji',
+        arbitrumsepolia: {
+            eid: EndpointId.ARBSEP_V2_TESTNET,
+            url: process.env.ARBITRUMSEPOLIA_RPC_URL,
             accounts,
         },
-        amoy: {
-            eid: EndpointId.AMOY_V2_TESTNET,
-            url: process.env.RPC_URL_AMOY || 'https://polygon-amoy-bor-rpc.publicnode.com',
+        orderlysepolia: {
+            eid: EndpointId.ORDERLY_V2_TESTNET,
+            url: process.env.ORDERLYSEPOLIA_RPC_URL, //   "https://testnet-rpc.orderly.org/8jbWg77mA6PCwHe13tEiv6rFqT1UJLPEB"
             accounts,
         },
-    },
-    namedAccounts: {
-        deployer: {
-            default: 0, // wallet address of index[0], of the mnemonic in .env
+        // mainnets
+        ethereum: {
+            eid: EndpointId.ETHEREUM_MAINNET,
+            url: process.env.ETHEREUM_RPC_URL,
+            accounts,
         },
+        arbitrum: {
+            eid: EndpointId.ARBITRUM_MAINNET,
+            url: process.env.ARBITRUM_RPC_URL,
+            accounts,
+        },
+        orderly: {
+            eid: EndpointId.ORDERLY_MAINNET,
+            url: process.env.ORDERLY_RPC_URL,
+            accounts,
+        }
     },
 }
 
