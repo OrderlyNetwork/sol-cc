@@ -73,6 +73,7 @@
     "hardhat-deploy": "^0.12.1"
   },
   "dependencies": {
-    "@layerzerolabs/verify-contract": "^1.1.28"
+    "@layerzerolabs/verify-contract": "^1.1.28",
+    "base58-js": "^2.0.0"
   }
 }

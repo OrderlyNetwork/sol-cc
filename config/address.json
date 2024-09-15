@@ -12,7 +12,8 @@
       "SolCCMock": "0xC36952Cd3A66a8831eE7880C191287AF751C7B50"
     },
     "orderlysepolia": {
-      "SolCCMock": "0x7e4BC26eB6927238f7dDeb9CdF06b4d37BD85010"
+      "SolCCMock": "0x7e4BC26eB6927238f7dDeb9CdF06b4d37BD85010",
+      "OFTMock": "0x5e0691eD41d6Bd83Dbf8192FA325fEFa874f7f19"
     }
   }
 }

@@ -43,5 +43,4 @@ struct WithdrawDataSol {
 
 interface ILedger {
     function accountDepositSol(AccountDepositSol calldata data) external;
-    function accountWithDrawSolFinish(AccountWithdrawSol calldata withdraw) external;
 }

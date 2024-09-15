@@ -2,9 +2,10 @@
 
 import { EnvType, OFTContractType, TEST_NETWORKS, MAIN_NETWORKS, tokenContractName, oftContractName, getLzConfig, checkNetwork, OPTIONS, TGE_CONTRACTS, LZ_CONFIG, getLzLibConfig , MULTI_SIG, ERC1967PROXY_BYTECODE, DETERMIN_CONTRSCT_FACTORY, INIT_TOKEN_HOLDER, TEST_LZ_ENDPOINT, MAIN_LZ_ENDPOINT, SIGNER} from "./const"
 import { loadContractAddress, saveContractAddress} from "./utils"
-import { Options } from '@layerzerolabs/lz-v2-utilities'
+import { addressToBytes32, Options } from '@layerzerolabs/lz-v2-utilities'
 import { DeployResult } from "hardhat-deploy/dist/types"
 import { task, types } from "hardhat/config"
+import { base58, hexlify } from "ethers/lib/utils"
 
 
 
@@ -33,7 +34,13 @@ task("sol:deploy", "Deploys the contract to a specific network")
                 lzEndpointAddress = getLzConfig(hre.network.name).endpointAddress
                 owner = signer.address
                 initArgs = [lzEndpointAddress, owner]
-            } else {
+            } else if (contractName === "OFTMock") {
+                proxy = true
+                lzEndpointAddress = getLzConfig(hre.network.name).endpointAddress
+                owner = signer.address
+                initArgs = [lzEndpointAddress, owner]
+            }
+            else {
                 return console.error("Invalid contract name")
             }
 
@@ -89,7 +96,7 @@ task("sol:upgrade", "Upgrades the contract to a specific network")
             const [ signer ] = await hre.ethers.getSigners();
             let implAddress = ""
             const salt = hre.ethers.utils.id(process.env.ORDER_DEPLOYMENT_SALT + `${env}` || "deterministicDeployment")
-            if (contractName === 'SolCCMock') {
+            if (contractName === 'SolCCMock' || contractName === 'OFTMock') {
                 const baseDeployArgs = {
                     from: signer.address,
                     log:true,
@@ -130,19 +137,60 @@ task("sol:send", "Sends a transaction to a contract")
             const contractAddress = await loadContractAddress(env, hre.network.name, contractName) as string
             const contract = await hre.ethers.getContractAt(contractName, contractAddress, signer)
 
-            const GAS_LIMIT = 500000; // Gas limit for the executor
-            const MSG_VALUE = 0; // msg.value for the lzReceive() function on destination in wei
+            const GAS_LIMIT = 1000000; // Gas limit for the executor
+            const MSG_VALUE = 10000000; // msg.value for the lzReceive() function on destination in wei
 
-            const _options = Options.newOptions().addExecutorLzReceiveOption(GAS_LIMIT, MSG_VALUE).toHex();
+            const options = Options.newOptions().addExecutorLzReceiveOption(GAS_LIMIT, MSG_VALUE).toHex();
 
-            console.log(`Options: ${_options}`);
+            const receiver = "0x18b9507fce83984a6b1959594a4df8149758cbaf2005d54e242dc27a1d35d976"
 
-            const str = "Hello World";
-            const dstEid = 40200;
+            const dstEid = 40168
 
-            const fee = await contract.quote(dstEid, str, _options, false);
+            const param = {
+                dstEid: dstEid,
+                to: receiver,
+                amountLD: 1000000,
+                minAmountLD: 1000000,
+                extraOptions: options,
+                composeMsg: "0x",
+                oftCmd: "0x"
+            }
+            const payLzToken = false
+            let fee = await contract.quoteSend(param, payLzToken);
+            console.log(`Fee in native: ${fee.nativeFee}`)
 
-            console.log(`Fee: ${hre.ethers.utils.formatEther(fee[0])}`);
+            const sendTx = await contract.send(param, fee, signer.address, {
+                value: fee.nativeFee
+            })
+            await sendTx.wait()
+            console.log(`Sending tokens with tx hash ${sendTx.hash}`)
+            // const sendTx = await localContract.send(param, fee, signer.address, 
+            // {   value: fee.nativeFee,
+            //     nonce: nonce++
+            // })
+            // await sendTx.wait()
+            // console.log(`Sending tokens from ${fromNetwork} to ${toNetwork} with tx hash ${sendTx.hash}`)
 
 
     })
+
+    task("sol:peer", "Sets the peer contract for the contract")
+    .addParam("env", "The environment to send the transaction", undefined, types.string)
+    .addParam("contract", "The contract to send the transaction", undefined, types.string)
+    .addParam("peer", "The peer contract to set", undefined, types.string)
+    .setAction(async (taskArgs, hre) => {
+            const contractName = taskArgs.contract 
+            const env: EnvType = taskArgs.env as EnvType
+            console.log(`Running on ${hre.network.name}`)
+            const { deploy } = hre.deployments;
+            const [ signer ] = await hre.ethers.getSigners();
+
+            const contractAddress = await loadContractAddress(env, hre.network.name, contractName) as string
+            const contract = await hre.ethers.getContractAt(contractName, contractAddress, signer)
+
+            const solAddress = hexlify(base58.decode(taskArgs.peer))
+            const solEid = 40168
+            const setPeerTx = await contract.setPeer(solEid, solAddress)
+            await setPeerTx.wait()
+            console.log(`Setting peer contract with tx hash ${setPeerTx.hash}`)
+        })

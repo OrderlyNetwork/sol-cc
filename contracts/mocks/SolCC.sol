@@ -2,14 +2,36 @@
 
 pragma solidity ^0.8.22;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { OApp, MessagingFee, Origin } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
-import { MessagingReceipt } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSender.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OAppUpgradeable, MessagingFee, Origin } from "../layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppUpgradeable.sol";
+import { MessagingReceipt } from "../layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSenderUpgradeable.sol";
+import { ILedger, AccountDepositSol, AccountWithdrawSol, WithdrawDataSol } from "../interface/ILedger.sol";
+import { SolCCManager } from "./SolCCManager.sol";
 
-contract MyOApp is OApp {
-    constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
+contract SolCC is OAppUpgradeable, SolCCManager {
+    mapping(uint256 => uint32) public chinIdToEid;
+    mapping(uint32 => uint256) public eidToChainId;
+    mapping(address => bool) public trustCaller;
+    ILedger public ledger;
 
-    string public data = "Nothing received yet.";
+    modifier onlyLedger() {
+        require(msg.sender == address(ledger), "Only ledger can call this function");
+        _;
+    }
+    /**
+     * @dev Disable the initializer on the implementation contract
+     */
+    constructor() {
+        _disableInitializers();
+    }
+    /**
+     * @dev Initialize the OrderOFT contract and set the ordered nonce flag
+     * @param _lzEndpoint The LayerZero endpoint address
+     * @param _delegate The delegate address of this OApp on the endpoint
+     */
+    function initialize(address _lzEndpoint, address _delegate) external virtual initializer {
+        __initializeOApp(_lzEndpoint, _delegate);
+    }
 
     /**
      * @notice Sends a message from the source chain to a destination chain.
@@ -64,7 +86,24 @@ contract MyOApp is OApp {
         bytes calldata payload,
         address /*_executor*/,
         bytes calldata /*_extraData*/
-    ) internal override {
-        data = abi.decode(payload, (string));
+    ) internal virtual override {}
+
+    // =========================== Admin functions ===========================
+
+    function setEids(uint256[] calldata _chainIds, uint32[] calldata _eids) external onlyOwner {
+        require(_chainIds.length == _eids.length, "Length mismatch");
+        require(_chainIds.length > 0, "Empty input");
+        for (uint256 i = 0; i < _chainIds.length; i++) {
+            require(_chainIds[i] > 0, "Zero chainid");
+            require(_eids[i] > 0, "Zero eid");
+            chinIdToEid[_chainIds[i]] = _eids[i];
+            eidToChainId[_eids[i]] = _chainIds[i];
+        }
+    }
+
+    function setLedger(address _ledger) external onlyOwner {
+        require(_ledger != address(0), "Zero address");
+        require(_ledger != address(ledger), "Same ledger address");
+        ledger = ILedger(_ledger);
     }
 }

@@ -1,26 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-enum CrossChainMethod {
-    Deposit,
-    Withdraw,
-    WidhtrawFinish,
-    RebalanceBurn, // burn request from ledger to vault
-    RebalanceBurnFinish, // burn request finish from vault to ledger
-    RebalanceMint, // mint request from ledger to vault
-    RebalanceMintFinish
-}
+import { AccountDepositSol, AccountWithdrawSol, WithdrawDataSol } from "../interface/ILedger.sol";
 
-enum PayloadType {
-    EventTypesWithdrawData,
-    AccountTypesAccountDeposit,
-    AccountTypesAccountWithdraw,
-    VaultTypesVaultDeposit,
-    VaultTypesVaultWithdraw,
-    RebalanceBurnCCData,
-    RebalanceBurnCCFinishData,
-    RebalanceMintCCData,
-    RebalanceMintCCFinishData
-}
+library MsgCodec {
+    uint8 constant MSG_TYPE_OFFSET = 1;
 
-library OFTMsgCodec {}
+    enum MsgType {
+        Deposit,
+        Withdraw,
+        RebalanceBurn,
+        RebalanceMint
+    }
+
+    function encodeWithdrawPayload(
+        AccountWithdrawSol memory _withdrawSolData
+    ) internal pure returns (bytes memory withdrawSolPayload) {
+        withdrawSolPayload = abi.encodePacked(
+            bytes32(_withdrawSolData.accountId),
+            bytes32(_withdrawSolData.sender),
+            bytes32(_withdrawSolData.receiver),
+            bytes32(_withdrawSolData.brokerHash),
+            bytes32(_withdrawSolData.tokenHash),
+            uint64(_withdrawSolData.tokenAmount),
+            uint64(_withdrawSolData.fee),
+            uint64(_withdrawSolData.chainId),
+            uint64(_withdrawSolData.withdrawNonce)
+        );
+    }
+
+    function encodeLzMsg(uint8 _msgType, bytes memory _payload) internal pure returns (bytes memory) {
+        return abi.encodePacked(uint8(_msgType), _payload);
+    }
+
+    function decodeLzMsg(bytes calldata _msg) internal pure returns (uint8 msgType, bytes memory payload) {
+        msgType = uint8(bytes1(_msg[:MSG_TYPE_OFFSET]));
+        payload = _msg[MSG_TYPE_OFFSET:];
+    }
+}
