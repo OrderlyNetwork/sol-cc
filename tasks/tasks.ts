@@ -39,6 +39,12 @@ task("sol:deploy", "Deploys the contract to a specific network")
                 lzEndpointAddress = getLzConfig(hre.network.name).endpointAddress
                 owner = signer.address
                 initArgs = [lzEndpointAddress, owner]
+            } else if (contractName === "SolConnector") {
+                proxy = true
+                lzEndpointAddress = getLzConfig(hre.network.name).endpointAddress
+                owner = signer.address
+                const solEid = 40168
+                initArgs = [lzEndpointAddress, owner, solEid]
             }
             else {
                 return console.error("Invalid contract name")
@@ -96,7 +102,7 @@ task("sol:upgrade", "Upgrades the contract to a specific network")
             const [ signer ] = await hre.ethers.getSigners();
             let implAddress = ""
             const salt = hre.ethers.utils.id(process.env.ORDER_DEPLOYMENT_SALT + `${env}` || "deterministicDeployment")
-            if (contractName === 'SolCCMock' || contractName === 'OFTMock') {
+            if (contractName === 'SolCCMock' || contractName === 'OFTMock' || contractName === 'SolConnector') {
                 const baseDeployArgs = {
                     from: signer.address,
                     log:true,

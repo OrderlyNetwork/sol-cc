@@ -1,7 +1,8 @@
 {
   "dev": {
     "orderlysepolia": {
-      "SolCCMock": "0x42532863dcC16164B515C10eb2e46a3630A47762"
+      "SolCCMock": "0x42532863dcC16164B515C10eb2e46a3630A47762",
+      "SolConnector": "0x9Dc724b24146BeDD2dA28b8C4B74126169B8f312"
     },
     "arbitrumsepolia": {
       "SolCCMock": "0x42532863dcC16164B515C10eb2e46a3630A47762"

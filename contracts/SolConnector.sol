@@ -17,9 +17,11 @@ struct LzOptions {
 }
 
 contract SolConnector is OAppUpgradeable, ISolConnector {
+    ILedger public ledger;
     mapping(uint8 => LzOptions) public msgOptions;
     uint32 public solEid;
-    ILedger public ledger;
+    uint64 public inboundNonce;
+    bool public orderDelivery;
 
     modifier onlyLedger() {
         require(msg.sender == address(ledger), "Only ledger can call this function");
@@ -29,6 +31,7 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
     using OptionsBuilder for bytes;
 
     event UnkonwnMessageType(uint8 msgType);
+    event SetOrderDelivery(bool orderDelivery, uint64 inboundNonce);
     /**
      * @dev Disable the initializer on the implementation contract
      */
@@ -44,15 +47,21 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
         __initializeOApp(_lzEndpoint, _delegate);
         require(_solEid != 0, "Zero eid");
         solEid = _solEid;
+        orderDelivery = true;
     }
 
     function _lzReceive(
         Origin calldata _origin,
-        bytes32 _guid,
+        bytes32 /*_guid*/,
         bytes calldata _message,
         address /*_executor*/,
         bytes calldata /*_extraData*/
     ) internal virtual override {
+        if (orderDelivery) {
+            require(_origin.nonce == inboundNonce + 1, "Invalid inbound nonce");
+        }
+        inboundNonce = _origin.nonce;
+
         (uint8 msgType, bytes memory payload) = MsgCodec.decodeLzMsg(_message);
 
         if (msgType == uint8(MsgCodec.MsgType.Deposit)) {
@@ -80,10 +89,18 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
 
         bytes memory payload = MsgCodec.encodeWithdrawPayload(withdrawData);
         bytes memory lzWithdrawMsg = MsgCodec.encodeLzMsg(uint8(MsgCodec.MsgType.Withdraw), payload);
-        bytes memory withdrawOptions = OptionsBuilder.newOptions().addExecutorLzReceiveOption(
-            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
-            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
-        ); // .addExecutorOrderedExecutionOption()
+        bytes memory withdrawOptions = orderDelivery
+            ? OptionsBuilder
+                .newOptions()
+                .addExecutorLzReceiveOption(
+                    msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
+                    msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
+                )
+                .addExecutorOrderedExecutionOption()
+            : OptionsBuilder.newOptions().addExecutorLzReceiveOption(
+                msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
+                msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
+            );
         MessagingFee memory _msgFee = _quote(solEid, lzWithdrawMsg, withdrawOptions, false);
         MessagingReceipt memory msgReceipt = _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
     }
@@ -103,6 +120,12 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
 
     function setOptions(uint8 _msgType, uint128 _gas, uint128 _value) external onlyOwner {
         msgOptions[_msgType] = LzOptions(_gas, _value);
+    }
+
+    function setOrderDelivery(bool _orderDelivery, uint64 _inboundNonce) external onlyOwner {
+        orderDelivery = _orderDelivery;
+        inboundNonce = _inboundNonce;
+        emit SetOrderDelivery(_orderDelivery, _inboundNonce);
     }
 
     fallback() external payable {}
