@@ -90,19 +90,20 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
         bytes memory payload = MsgCodec.encodeWithdrawPayload(withdrawData);
         bytes memory lzWithdrawMsg = MsgCodec.encodeLzMsg(uint8(MsgCodec.MsgType.Withdraw), payload);
         bytes memory withdrawOptions = orderDelivery
-            ? OptionsBuilder
-                .newOptions()
-                .addExecutorLzReceiveOption(
-                    msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
-                    msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
-                )
-                .addExecutorOrderedExecutionOption()
+            ? OptionsBuilder.newOptions().addExecutorLzReceiveOption(
+                msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
+                msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
+            ) // .addExecutorOrderedExecutionOption()
             : OptionsBuilder.newOptions().addExecutorLzReceiveOption(
                 msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
                 msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
             );
         MessagingFee memory _msgFee = _quote(solEid, lzWithdrawMsg, withdrawOptions, false);
         MessagingReceipt memory msgReceipt = _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
+    }
+
+    function nextNonce(uint32 /*_srcEid*/, bytes32 /*_sender*/) public view override returns (uint64 nonce) {
+        nonce = inboundNonce + 1;
     }
 
     // =========================== Admin functions ===========================
