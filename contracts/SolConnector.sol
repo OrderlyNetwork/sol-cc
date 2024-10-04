@@ -94,7 +94,7 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
             msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
         );
         MessagingFee memory _msgFee = _quote(solEid, lzWithdrawMsg, withdrawOptions, false);
-        MessagingReceipt memory msgReceipt = _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
+        _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
     }
 
     function nextNonce(uint32 /*_srcEid*/, bytes32 /*_sender*/) public view override returns (uint64 nonce) {
