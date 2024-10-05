@@ -3,8 +3,16 @@
 This project is to set up a connector to the Vault program deployed on Solana. The connector is built on the Layerzero OApp framwork with upgradeable setting.
 
 ## Prepare
+1. Install Yarn and run `yarn` to install the dependencies.
+2. Install foundry
+3. Create an `.env` file in the root directory and copy the content from `.env.example` to `.env`. Then, paste the private key into the `PRIVATE_KEY` field.
 
-Create an `.env` file in the root directory and copy the content from `.env.example` to `.env`. Then, paste the private key into the `PRIVATE_KEY` field.
+## Run Tests
+
+```bash
+forge build
+forge test
+```
 
 ## Deployment
 
