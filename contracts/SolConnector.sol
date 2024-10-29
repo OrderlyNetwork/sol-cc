@@ -98,7 +98,11 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
     }
 
     function nextNonce(uint32 /*_srcEid*/, bytes32 /*_sender*/) public view override returns (uint64 nonce) {
-        nonce = inboundNonce + 1;
+        if (orderDelivery) {
+            nonce = inboundNonce + 1;
+        } else {
+            nonce = 0;
+        }
     }
 
     // =========================== Admin functions ===========================
