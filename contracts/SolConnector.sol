@@ -56,7 +56,7 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
         bytes calldata _message,
         address /*_executor*/,
         bytes calldata /*_extraData*/
-    ) internal virtual override {
+    ) internal virtual override whenNotPaused {
         if (orderDelivery) {
             require(_origin.nonce == inboundNonce + 1, "Invalid inbound nonce");
         }
@@ -74,7 +74,7 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
 
     // =========================== Only Ledger functions ===========================
 
-    function withdraw(WithdrawDataSol calldata _withdrawData) external onlyLedger {
+    function withdraw(WithdrawDataSol calldata _withdrawData) external onlyLedger whenNotPaused {
         AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
             Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
             _withdrawData.sender,
@@ -98,7 +98,11 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
     }
 
     function nextNonce(uint32 /*_srcEid*/, bytes32 /*_sender*/) public view override returns (uint64 nonce) {
-        nonce = inboundNonce + 1;
+        if (orderDelivery) {
+            nonce = inboundNonce + 1;
+        } else {
+            nonce = 0;
+        }
     }
 
     // =========================== Admin functions ===========================
