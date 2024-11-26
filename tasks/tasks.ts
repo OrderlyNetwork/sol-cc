@@ -201,6 +201,50 @@ task("sol:peer", "Sets the peer contract for the contract")
             console.log(`Setting peer contract with tx hash ${setPeerTx.hash}`)
     })
 
+    task("sol:owner", "Set the owner of SolConnector ")
+    .addParam("env", "The environment to deploy the OFT contract", undefined, types.string)
+    .addFlag("setOwner", "Set the configuration of OFT contracts for different networks", )
+    .setAction(async (taskArgs, hre) => {
+        checkNetwork(hre.network.name)
+        try {
+            const fromNetwork = hre.network.name
+            console.log(`Running on ${fromNetwork}`)
+            const [ signer ] = await hre.ethers.getSigners()
+            const localContractName = "SolConnector"
+            const localContractAddress = await loadContractAddress(taskArgs.env, fromNetwork, localContractName) as string
+            const localContract = await hre.ethers.getContractAt(localContractName, localContractAddress, signer)
+
+            const endpointV2Deployment = await hre.deployments.get('EndpointV2')
+            const endpointV2 = await hre.ethers.getContractAt(endpointV2Deployment.abi, endpointV2Deployment.address, signer)
+
+            const owner = await localContract.owner()
+            const delegator = await endpointV2.delegates(localContractAddress)
+
+            console.log(`OFT Owner: ${owner}`)
+            console.log(`OFT Delegator: ${delegator}`)
+
+            if (taskArgs.setOwner) {
+                const multiSig = MULTI_SIG[taskArgs.env]
+                if (multiSig && owner !== multiSig) {
+                    const txSetDelegator = await localContract.setDelegate(multiSig)
+                    await txSetDelegator.wait()
+                    console.log(`Set OFT Delegator to ${multiSig}`)
+                    const txSetOwner = await localContract.transferOwnership(multiSig)
+                    await txSetOwner.wait()
+                    console.log(`Set OFT Owner to ${multiSig}`)
+                } else {
+                    console.log(`OFT Owner already set to ${multiSig} or not found`)
+                }
+            }
+
+
+
+        }
+        catch (e) {
+            console.log(`Error: ${e}`)
+        }
+    })
+
 const CONFIG_TYPE_EXECUTOR = 1
 const CONFIG_TYPE_ULN = 2
 const EXECUTOR_CONFIG_STRUCT = "tuple(uint32 maxMessageSize, address executorAddress)"
@@ -306,6 +350,16 @@ task("sol:getconfig", "Gets the configuration of the contract")
             } else {
                 console.log(`👌 The onchain Receive DVNs on chain are the same as defined on config file`)
             }
+
+            // const endpointV2Deployment = await hre.deployments.get('EndpointV2')
+            // const endpointV2 = await hre.ethers.getContractAt(endpointV2Deployment.abi, endpointV2Deployment.address, signer)
+            const localContract = await hre.ethers.getContractAt(localContractName, localContractAddress, signer)
+
+            const owner = await localContract.owner()
+            const delegator = await endpointV2.delegates(localContractAddress)
+
+            console.log(`OFT Owner: ${owner}`)
+            console.log(`OFT Delegator: ${delegator}`)
         } catch (error) {
             console.error(error)
         }
