@@ -1,7 +1,7 @@
 
 
 import { EnvType, OFTContractType, TEST_NETWORKS, MAIN_NETWORKS, tokenContractName, oftContractName, getLzConfig, checkNetwork, OPTIONS, TGE_CONTRACTS, LZ_CONFIG, getLzLibConfig , MULTI_SIG, ERC1967PROXY_BYTECODE, DETERMIN_CONTRSCT_FACTORY, INIT_TOKEN_HOLDER, TEST_LZ_ENDPOINT, MAIN_LZ_ENDPOINT, SIGNER} from "./const"
-import { loadContractAddress, saveContractAddress} from "./utils"
+import { loadContractAddress, saveContractAddress, equalDVNs} from "./utils"
 import { addressToBytes32, Options } from '@layerzerolabs/lz-v2-utilities'
 import { DeployResult } from "hardhat-deploy/dist/types"
 import { task, types } from "hardhat/config"
@@ -180,7 +180,7 @@ task("sol:send", "Sends a transaction to a contract")
 
     })
 
-    task("sol:peer", "Sets the peer contract for the contract")
+task("sol:peer", "Sets the peer contract for the contract")
     .addParam("env", "The environment to send the transaction", undefined, types.string)
     .addParam("contract", "The contract to send the transaction", undefined, types.string)
     .addParam("peer", "The peer contract to set", undefined, types.string)
@@ -195,8 +195,118 @@ task("sol:send", "Sends a transaction to a contract")
             const contract = await hre.ethers.getContractAt(contractName, contractAddress, signer)
 
             const solAddress = hexlify(base58.decode(taskArgs.peer))
-            const solEid = 40168
+            const solEid = env === "mainnet" ? 30168 : 40168
             const setPeerTx = await contract.setPeer(solEid, solAddress)
             await setPeerTx.wait()
             console.log(`Setting peer contract with tx hash ${setPeerTx.hash}`)
-        })
+    })
+
+const CONFIG_TYPE_EXECUTOR = 1
+const CONFIG_TYPE_ULN = 2
+const EXECUTOR_CONFIG_STRUCT = "tuple(uint32 maxMessageSize, address executorAddress)"
+// const EXECUTOR_CONFIG_STRUCT = ["uint32","address"]
+const ULN_CONFIG_STRUCT = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)"
+// const ULN_CONFIG_STRUCT = ["uint64","uint8","uint8","uint8","address[]","address[]"]
+
+task("sol:getconfig", "Gets the configuration of the contract")
+    .addParam("env", "The environment to deploy the OFT contract", undefined, types.string)
+    .addFlag("setConfig", "Set the configuration of OFT contracts for different networks", )
+    .addFlag("forceSet", "Force set the configuration of OFT contracts for different networks", )
+    .addFlag("multisig", "Get the proposal for multisig", )
+    .setAction(async (taskArgs, hre) => {
+        try{
+            const env = taskArgs.env as EnvType
+            const fromNetwork = hre.network.name
+            const toNetwork = env === "mainnet" ? "solana" : "soldev"
+            const endpointV2Deployment = await hre.deployments.get('EndpointV2')
+            const [ signer ] = await hre.ethers.getSigners()
+            const endpointV2 = await hre.ethers.getContractAt(endpointV2Deployment.abi, endpointV2Deployment.address, signer)
+            const localContractName = "SolConnector"
+            const localContractAddress = await loadContractAddress(taskArgs.env, fromNetwork, localContractName) as string
+            const lzLibConfig = getLzLibConfig(fromNetwork)
+            let remoteLzConfig, remoteEid, defaultSendLib, defaultReceiveLib, onchainSendLibConfigExecutor, onchainSendLibConfigULN, onchainReceiveLibConfigULN, lzSendConfig, lzReceiveConfig
+            let rawSendLibExecutor, rawSendLibULN, rawReceiveLibULN, setSendLibExecutor, setSendLibULN, setReceiveLibULN
+            let receiveLibConfigULNArray = []
+            let sendLibConfigExecutorULNArray = []
+            remoteLzConfig = getLzConfig(toNetwork)
+            remoteEid = remoteLzConfig["endpointId"]
+            defaultSendLib = await endpointV2.defaultSendLibrary(remoteEid)
+            defaultReceiveLib = await endpointV2.defaultReceiveLibrary(remoteEid)
+            onchainSendLibConfigExecutor = await endpointV2.getConfig(localContractAddress, defaultSendLib, remoteEid, CONFIG_TYPE_EXECUTOR)
+            onchainSendLibConfigULN = await endpointV2.getConfig(localContractAddress, defaultSendLib, remoteEid, CONFIG_TYPE_ULN)
+            onchainReceiveLibConfigULN = await endpointV2.getConfig(localContractAddress, defaultReceiveLib, remoteEid, CONFIG_TYPE_ULN)
+            const [decodeSendLibConfigExecutor] = hre.ethers.utils.defaultAbiCoder.decode([EXECUTOR_CONFIG_STRUCT], onchainSendLibConfigExecutor)
+            const [decodeSendLibConfigULN] = hre.ethers.utils.defaultAbiCoder.decode([ULN_CONFIG_STRUCT], onchainSendLibConfigULN)
+            const [decodeReceiveLibConfigULN] = hre.ethers.utils.defaultAbiCoder.decode([ULN_CONFIG_STRUCT], onchainReceiveLibConfigULN)
+            lzSendConfig = lzLibConfig.sendLibConfig
+            lzReceiveConfig = lzLibConfig.receiveLibConfig
+            console.log(`=================Print Config for pathway to ${toNetwork}===================`)
+            console.log(`Default SendLib: ${defaultSendLib}`)
+            console.log(`Onchain SendLibConfigExecutor: \n maxMessageSize: ${decodeSendLibConfigExecutor[0]},\n executor: ${decodeSendLibConfigExecutor[1]}`)
+            console.log(`Onchain SendLibConfigULN: \n confirmations: ${decodeSendLibConfigULN[0]}, \n requiredDVNCount: ${decodeSendLibConfigULN[1]}, \n optionalDVNCount: ${decodeSendLibConfigULN[2]}, \n optionalDVNThreshold: ${decodeSendLibConfigULN[3]}, \n requiredDVNs: ${decodeSendLibConfigULN[4]}, \n optionalDVNs: ${decodeSendLibConfigULN[5]} \n`)
+            
+            console.log(`Default ReceiveLib: ${defaultReceiveLib}`)
+            console.log(`Onchain ReceiveLibConfigULN: \n confirmations: ${decodeReceiveLibConfigULN[0]}, \n requiredDVNCount: ${decodeReceiveLibConfigULN[1]}, \n optionalDVNCount: ${decodeReceiveLibConfigULN[2]}, \n optionalDVNThreshold: ${decodeReceiveLibConfigULN[3]}, \n requiredDVNs: ${decodeReceiveLibConfigULN[4]}, \n optionalDVNs: ${decodeReceiveLibConfigULN[5]} \n`)
+
+            if (taskArgs.setConfig) {
+                
+                const isDefaultSendLib = await endpointV2.isDefaultSendLibrary(localContractAddress, remoteEid)
+                if (isDefaultSendLib) {
+                    const txSetSendLib = await endpointV2.setSendLibrary(localContractAddress, remoteEid, defaultSendLib)
+                    await txSetSendLib.wait()
+                    console.log(`✅ Set SendLib for ${toNetwork}`)
+                } else {
+                    console.log(`👌 SendLib already set for ${toNetwork}`)
+                }
+
+                const receiveLibOnContract = await endpointV2.getReceiveLibrary(localContractAddress, remoteEid)
+                const expiryBlocks = 0
+                if (receiveLibOnContract.isDefault == true) {
+                    const txSetReceiveLib = await endpointV2.setReceiveLibrary(localContractAddress, remoteEid, defaultReceiveLib, expiryBlocks)
+                    await txSetReceiveLib.wait()
+                    console.log(`✅ Set ReceiveLib for ${toNetwork}`)
+                } else {
+                    console.log(`👌 ReceiveLib already set for ${toNetwork}`)
+                }
+                    
+            }
+
+            // create new arreys to set config
+            rawSendLibExecutor = [...decodeSendLibConfigExecutor || []]
+            // console.log(rawSendLibExecutor)
+            rawSendLibULN = [...decodeSendLibConfigULN || []]
+            rawReceiveLibULN = [...decodeReceiveLibConfigULN || []]
+
+            // console.log(rawSendLibULN[4])
+            if (!equalDVNs(rawSendLibULN[4], lzLibConfig.sendLibConfig?.ulnConfig.requiredDVNs!)) {
+                console.log(`🚨 The onchain Send DVNs on chain are not the same as defined on config file`)
+                rawSendLibULN[4] = lzLibConfig.sendLibConfig?.ulnConfig.requiredDVNs
+                rawSendLibULN[1] = lzLibConfig.sendLibConfig?.ulnConfig.requiredDVNs.length
+                setSendLibULN = true
+                // console.log(rawSendLibULN)
+                const encodeSendLibConfigExecutor = hre.ethers.utils.defaultAbiCoder.encode([EXECUTOR_CONFIG_STRUCT], [rawSendLibExecutor])
+                sendLibConfigExecutorULNArray.push([remoteEid, CONFIG_TYPE_EXECUTOR, encodeSendLibConfigExecutor])
+                const encodeSendLibConfigULN= hre.ethers.utils.defaultAbiCoder.encode([ULN_CONFIG_STRUCT], [rawSendLibULN])
+                sendLibConfigExecutorULNArray.push([remoteEid, CONFIG_TYPE_ULN, encodeSendLibConfigULN])
+
+            } else {
+                console.log(`👌 The onchain Send DVNs on chain are the same as defined on config file`)
+            }
+
+            // console.log(decodeReceiveLibConfigULN[4])
+            if (!equalDVNs(decodeReceiveLibConfigULN[4], lzLibConfig.receiveLibConfig?.ulnConfig.requiredDVNs!))  { 
+                console.log(`🚨 The onchain Receive DVNs on chain are not the same as defined on config file`)
+                rawReceiveLibULN[4] = lzLibConfig.receiveLibConfig?.ulnConfig.requiredDVNs
+                rawReceiveLibULN[1] = lzLibConfig.receiveLibConfig?.ulnConfig.requiredDVNs.length
+                setReceiveLibULN = true
+                // console.log(rawReceiveLibULN)
+                const encodeRceiveLibConfigULN = hre.ethers.utils.defaultAbiCoder.encode([ULN_CONFIG_STRUCT], [rawReceiveLibULN])
+                receiveLibConfigULNArray.push([remoteEid, CONFIG_TYPE_ULN, encodeRceiveLibConfigULN])
+                
+            } else {
+                console.log(`👌 The onchain Receive DVNs on chain are the same as defined on config file`)
+            }
+        } catch (error) {
+            console.error(error)
+        }
+    })
