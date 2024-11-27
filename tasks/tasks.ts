@@ -355,11 +355,25 @@ task("sol:getconfig", "Gets the configuration of the contract")
             // const endpointV2 = await hre.ethers.getContractAt(endpointV2Deployment.abi, endpointV2Deployment.address, signer)
             const localContract = await hre.ethers.getContractAt(localContractName, localContractAddress, signer)
 
+            const orderDeliver = await localContract.orderDelivery()
+            const inboundNonce = await localContract.inboundNonce()
+            const solEid = await localContract.solEid()
+            const solPeer = await localContract.peers(solEid)
+            const [withdrawMsgGas, withdrawMsgValue] = await localContract.msgOptions(1)   // 1: withdraw
             const owner = await localContract.owner()
+            const endpoint = await localContract.endpoint()
+            const ledger = await localContract.ledger()
             const delegator = await endpointV2.delegates(localContractAddress)
-
-            console.log(`OFT Owner: ${owner}`)
-            console.log(`OFT Delegator: ${delegator}`)
+            console.log(`=================Print SolConnector Information===================`)
+            console.log(`Order Deliver: ${orderDeliver}`)
+            console.log(`Inbound Nonce: ${inboundNonce}`)
+            console.log(`Solana EID: ${solEid}`)
+            console.log(`Withdraw Msg Gas: ${withdrawMsgGas}, Withdraw Msg Value: ${withdrawMsgValue}`)
+            console.log(`Solana Peer: ${base58.encode(solPeer)}`)
+            console.log(`Endpoint address: ${endpoint}`)
+            console.log(`Ledger address: ${ledger}`)
+            console.log(`SolConnector Owner: ${owner}`)
+            console.log(`SolConnector Delegator: ${delegator}`)
         } catch (error) {
             console.error(error)
         }
