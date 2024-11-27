@@ -202,8 +202,8 @@ task("sol:peer", "Sets the peer contract for the contract")
     })
 
     task("sol:owner", "Set the owner of SolConnector ")
-    .addParam("env", "The environment to deploy the OFT contract", undefined, types.string)
-    .addFlag("setOwner", "Set the configuration of OFT contracts for different networks", )
+    .addParam("env", "The environment to operate", undefined, types.string)
+    .addFlag("setOwner", "Set the multisig as owner", )
     .setAction(async (taskArgs, hre) => {
         checkNetwork(hre.network.name)
         try {
