@@ -52,6 +52,16 @@ export const OPTIONS = {
     }
 }
 
+export enum MSG_TYPE {
+    DEPOSIT,
+    WITHDRAW
+}
+
+export const WITHDRAWAL_OPTIONS = {
+    "gas": 400000,
+    "value": 0
+}
+
 export const RPC: { [key: network]: string } = {
     // testnets
     "sepolia": "https://rpc.sepolia.org",
@@ -120,6 +130,7 @@ type TgeContract = {
 // For most testnets/mainnets, the endpoint is the follow one, but need to check the actual endpoint under this doc https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
 export const TEST_LZ_ENDPOINT = "0x6EDCE65403992e310A62460808c4b910D972f10f"
 export const MAIN_LZ_ENDPOINT = "0x1a44076050125825900e736c501f859c50fE728c"
+export const SOLANA_ENDPOINT = "0x5aad76da514b6e1dcf11037e904dac3d375f525c9fbafcb19507b78907d8c18b"
 
 export const LZ_CONFIG: { [key: network]: LzConfig} = {
     // lz config for testnets
@@ -253,6 +264,11 @@ export const LZ_CONFIG: { [key: network]: LzConfig} = {
             }
         }
     },
+    "soldev": {
+        endpointAddress: SOLANA_ENDPOINT,
+        endpointId: 40168,
+        chainId: 901901901,
+    },
     // lz config for mainnets
     "ethereum": {
         endpointAddress: MAIN_LZ_ENDPOINT,
@@ -383,6 +399,11 @@ export const LZ_CONFIG: { [key: network]: LzConfig} = {
                 requiredDVNs: ["0xF53857dbc0D2c59D5666006EC200cbA2936B8c35"],
             }
         }
+    },
+    "solana": {
+        endpointAddress: SOLANA_ENDPOINT,
+        endpointId: 30168,
+        chainId: 900900900
     },
 }
 
@@ -522,7 +543,7 @@ export function supportedNetwork(network: network) {
 }
 
 export function checkNetwork(network: string) {
-    if (TEST_NETWORKS.includes(network) || MAIN_NETWORKS.includes(network)) {
+    if (TEST_NETWORKS.includes(network) || MAIN_NETWORKS.includes(network) || network === 'soldev' || network === 'solana') {
         return true
     } else {
         throw new Error(`Network ${network} is not supported`)
