@@ -43,7 +43,8 @@ task("sol:deploy", "Deploys the contract to a specific network")
                 proxy = true
                 lzEndpointAddress = getLzConfig(hre.network.name).endpointAddress
                 owner = signer.address
-                const solEid = 40168
+                console.log(`Owner: ${owner}`)
+                const solEid = env === "mainnet" ? 30168 : 40168
                 initArgs = [lzEndpointAddress, owner, solEid]
             }
             else {
@@ -349,6 +350,25 @@ task("sol:getconfig", "Gets the configuration of the contract")
                 
             } else {
                 console.log(`👌 The onchain Receive DVNs on chain are the same as defined on config file`)
+            }
+
+            if (taskArgs.setConfig) {
+                if(setSendLibULN || taskArgs.forceSet) {
+                    console.log("=====🚨 Set SendLib config for all above listed networks=====")
+                    const txSetSendConfig = await endpointV2.setConfig(localContractAddress, defaultSendLib, sendLibConfigExecutorULNArray)
+                    await txSetSendConfig.wait()
+                    console.log(`✅ Set SendLib config on ${fromNetwork}`)
+                } else {
+                    console.log(`👌 SendLib config already set on ${fromNetwork}`)
+                }
+                if (setReceiveLibULN || taskArgs.forceSet) {
+                    console.log("=====🚨 Set ReceivedLib config for all above listed networks=====")
+                    const txSetULNConfig = await endpointV2.setConfig(localContractAddress, defaultReceiveLib, receiveLibConfigULNArray)
+                    await txSetULNConfig.wait()
+                    console.log(`✅ Set ReceiveLib config on ${fromNetwork}`)
+                } else {
+                    console.log(`👌 ReceiveLib config already set on ${fromNetwork}`)
+                }    
             }
 
             // const endpointV2Deployment = await hre.deployments.get('EndpointV2')
