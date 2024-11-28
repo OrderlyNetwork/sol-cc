@@ -12,6 +12,7 @@ import '@layerzerolabs/toolbox-hardhat'
 import { HardhatUserConfig, HttpNetworkAccountsUserConfig } from 'hardhat/types'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 import "./tasks/tasks"
+import { RPC } from './tasks/const'
 
 // Set your preferred authentication method
 //
@@ -52,33 +53,83 @@ const config: HardhatUserConfig = {
         
         sepolia: {
             eid: EndpointId.SEPOLIA_V2_TESTNET,
-            url: process.env.SEPOLIA_RPC_URL,
+            url: process.env.SEPOLIA_RPC_URL || RPC["sepolia"],
             accounts,
         },
         arbitrumsepolia: {
             eid: EndpointId.ARBSEP_V2_TESTNET,
-            url: process.env.ARBITRUMSEPOLIA_RPC_URL,
+            url: process.env.ARBITRUMSEPOLIA_RPC_URL || RPC["arbitrumsepolia"],
+            accounts,
+        },
+        opsepolia: {
+            eid: EndpointId.OPTSEP_V2_TESTNET,
+            url: process.env.OPSEPOLIA_RPC_URL || RPC["opsepolia"],
+            accounts,
+        },
+        amoy: {
+            eid: EndpointId.AMOY_V2_TESTNET,
+            url: process.env.AMOYSEPOLIA_RPC_URL || RPC["amoy"],
+            accounts,
+          },
+        mantlesepolia: {
+            eid: EndpointId.MANTLESEP_V2_TESTNET,
+            url: process.env.MANTLESEPOLIA_RPC_URL || RPC["mantlesepolia"],
+            accounts,
+        },
+        basesepolia: {
+            eid: EndpointId.BASESEP_V2_TESTNET,
+            url: process.env.BASESEPOLIA_RPC_URL || RPC["basesepolia"],
+            accounts,
+        },
+        fuji: {
+            eid: EndpointId.AVALANCHE_V2_TESTNET,
+            url: process.env.FUJI_RPC_URL || RPC["fuji"],
             accounts,
         },
         orderlysepolia: {
             eid: EndpointId.ORDERLY_V2_TESTNET,
-            url: process.env.ORDERLYSEPOLIA_RPC_URL, //   "https://testnet-rpc.orderly.org/8jbWg77mA6PCwHe13tEiv6rFqT1UJLPEB"
+            url: process.env.ORDERLYSEPOLIA_RPC_URL || RPC["orderlysepolia"], //   "https://testnet-rpc.orderly.org/8jbWg77mA6PCwHe13tEiv6rFqT1UJLPEB"
             accounts,
         },
         // mainnets
         ethereum: {
             eid: EndpointId.ETHEREUM_MAINNET,
-            url: process.env.ETHEREUM_RPC_URL,
+            url: process.env.ETHEREUM_RPC_URL || RPC["ethereum"],
             accounts,
         },
         arbitrum: {
             eid: EndpointId.ARBITRUM_MAINNET,
-            url: process.env.ARBITRUM_RPC_URL,
+            url: process.env.ARBITRUM_RPC_URL || RPC["arbitrum"],
+            accounts,
+        },
+        optimism: {
+            eid: EndpointId.OPTIMISM_MAINNET,
+            url: process.env.OPTIMISM_RPC_URL || RPC["optimism"],
+            accounts,
+        },
+        polygon: {
+            eid: EndpointId.POLYGON_MAINNET,
+            url: process.env.POLYGON_RPC_URL || RPC["polygon"],
+            accounts,
+        },
+        base: {
+            eid: EndpointId.BASE_MAINNET,
+            url: process.env.BASE_RPC_URL || RPC["base"],
+            accounts,
+        },
+        mantle: {
+            eid: EndpointId.MANTLE_MAINNET,
+            url: process.env.MANTLE_RPC_URL || RPC["mantle"],
+            accounts,
+        },
+        avax: {
+            eid: EndpointId.AVALANCHE_MAINNET,
+            url: process.env.AVAX_RPC_URL || RPC["avax"],
             accounts,
         },
         orderly: {
             eid: EndpointId.ORDERLY_MAINNET,
-            url: process.env.ORDERLY_RPC_URL,
+            url: process.env.ORDERLY_RPC_URL || RPC["orderly"],
             accounts,
         }
     },
