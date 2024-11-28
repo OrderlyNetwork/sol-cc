@@ -22,5 +22,10 @@
     "orderlysepolia": {
       "SolConnector": "0x5Bf771A65d057e778C5f0Ed52A0003316f94322D"
     }
+  },
+  "mainnet": {
+    "orderly": {
+      "SolConnector": "0xCecAe061aa078e13b5e70D5F9eCee90a3F2B6AeA"
+    }
   }
 }
