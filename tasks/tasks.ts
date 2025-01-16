@@ -118,13 +118,13 @@ task("sol:upgrade", "Upgrades the contract to a specific network")
             else {
                 throw new Error(`Contract ${contractName} not found`)
             }
-            const contractAddress = await loadContractAddress(env, network, contractName) as string
-            const contract = await hre.ethers.getContractAt(contractName, contractAddress, signer)
+            // const contractAddress = await loadContractAddress(env, network, contractName) as string
+            // const contract = await hre.ethers.getContractAt(contractName, contractAddress, signer)
             
-            // encoded data for function call during upgrade
-            const data = "0x"
-            const upgradeTx = await contract.upgradeToAndCall(implAddress, data)
-            console.log(`Upgrading contract ${contractName} to ${implAddress} with tx hash ${upgradeTx.hash}`)
+            // // encoded data for function call during upgrade
+            // const data = "0x"
+            // const upgradeTx = await contract.upgradeToAndCall(implAddress, data)
+            // console.log(`Upgrading contract ${contractName} to ${implAddress} with tx hash ${upgradeTx.hash}`)
         }
         catch (e) {
             console.log(`Error: ${e}`)
