@@ -17,7 +17,7 @@ library MsgCodec {
         AccountWithdrawSol memory _withdrawSolData
     ) internal pure returns (bytes memory withdrawSolPayload) {
         withdrawSolPayload = abi.encodePacked(
-            bytes32(_withdrawSolData.accountId),
+            // bytes32(_withdrawSolData.accountId),
             bytes32(_withdrawSolData.sender),
             bytes32(_withdrawSolData.receiver),
             bytes32(_withdrawSolData.brokerHash),
