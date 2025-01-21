@@ -76,7 +76,7 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
 
     function withdraw(WithdrawDataSol calldata _withdrawData) external onlyLedger whenNotPaused {
         AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
-            Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
+            // Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
             _withdrawData.sender,
             _withdrawData.receiver,
             Utils.calculateStringHash(_withdrawData.brokerId),

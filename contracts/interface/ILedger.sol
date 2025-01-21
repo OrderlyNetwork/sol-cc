@@ -15,7 +15,7 @@ struct AccountDepositSol {
 
 // AccountTypes
 struct AccountWithdrawSol {
-    bytes32 accountId;
+    // bytes32 accountId;
     bytes32 sender;
     bytes32 receiver;
     bytes32 brokerHash;
