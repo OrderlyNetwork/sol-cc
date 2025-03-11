@@ -80,7 +80,7 @@ contract SolConnector is OAppUpgradeable, ISolConnector {
             _withdrawData.sender,
             _withdrawData.receiver,
             Utils.calculateStringHash(_withdrawData.brokerId),
-            Utils.calculateStringHash(_withdrawData.tokenSymbol),
+            // Utils.calculateStringHash(_withdrawData.tokenSymbol),
             _withdrawData.tokenAmount,
             _withdrawData.fee,
             _withdrawData.chainId,

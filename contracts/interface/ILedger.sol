@@ -19,7 +19,7 @@ struct AccountWithdrawSol {
     bytes32 sender;
     bytes32 receiver;
     bytes32 brokerHash;
-    bytes32 tokenHash;
+    // bytes32 tokenHash;
     uint128 tokenAmount;
     uint128 fee;
     uint256 chainId;
