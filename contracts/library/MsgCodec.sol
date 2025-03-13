@@ -21,7 +21,7 @@ library MsgCodec {
             bytes32(_withdrawSolData.sender),
             bytes32(_withdrawSolData.receiver),
             bytes32(_withdrawSolData.brokerHash),
-            bytes32(_withdrawSolData.tokenHash),
+            // bytes32(_withdrawSolData.tokenHash),
             uint64(_withdrawSolData.tokenAmount),
             uint64(_withdrawSolData.fee),
             uint64(_withdrawSolData.chainId),
