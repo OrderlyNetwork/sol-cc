@@ -229,10 +229,9 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
                 "Broker index out of range"
             );
         }
-        uint16 oldIndex = brokerHash2Index[_brokerHash];
         brokerHash2Index[_brokerHash] = _index;
         brokerIndex2Hash[_index] = _brokerHash;
-        emit SetBrokerHashToIndex(_brokerHash, oldIndex, _index);
+        emit SetBrokerHashToIndex(_brokerHash, 0, _index);
     }
 
     // @dev Reset broker hash and its index, in case of misconfiguration
