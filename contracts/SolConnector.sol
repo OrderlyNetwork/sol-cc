@@ -219,6 +219,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     // @dev Only owner or broker manager role can call this function
     // @dev For broker manager role, the broker index must be >= BROKER_MANAGER_INDEX_BASE
     // @dev This is to avoid conflict with the brokers added by owner
+    // @dev This function call will revert if there is some misconfiguration for the broker hash or index
     function setBrokerHash2Index(bytes32 _brokerHash, uint16 _index) external onlyOwnerOrRole(BROKER_MANAGER_ROLE) {
         require(_brokerHash != bytes32(0) && _index != 0, "Zero broker hash or index");
         require(brokerIndex2Hash[_index] == bytes32(0), "Broker index already used");
@@ -238,6 +239,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     // @dev Only owner can call this function
     function resetBrokerHash2Index(bytes32 _brokerHash, uint16 _newIndex) external onlyOwner {
         uint16 oldIndex = brokerHash2Index[_brokerHash];
+        delete brokerIndex2Hash[oldIndex];
         brokerHash2Index[_brokerHash] = _newIndex;
         brokerIndex2Hash[_newIndex] = _brokerHash;
         emit SetBrokerHashToIndex(_brokerHash, oldIndex, _newIndex);
