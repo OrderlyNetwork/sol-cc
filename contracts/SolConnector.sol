@@ -36,8 +36,10 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     mapping(uint16 => bytes32) public brokerIndex2Hash;
     mapping(bytes32 => uint128) public tokenDecimalsOnSolana;
     mapping(bytes32 => uint128) public tokenDecimalsOnOrderly;
+    uint16 public maxBrokerCount; // max broker count, added by broker manager
 
-    // /* ================ Role ================ */
+    // /* ================ Constants ================ */
+    uint16 public constant BROKER_MANAGER_INDEX_BASE = 18000; // Broker index for broker manager role starts from 18000 to avoid conflict with the brokers added by owner
 
     bytes32 public constant SYMBOL_MANAGER_ROLE = keccak256("ORDERLY_MANAGER_SYMBOL_MANAGER_ROLE");
 
@@ -63,6 +65,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     event SetBrokerHashToIndex(bytes32 indexed brokerHash, uint16 _oldIndex, uint16 _newIndex);
     event SetTokenDecimalsOnSolana(bytes32 indexed tokenHash, uint128 decimals);
     event SetTokenDecimalsOnOrderly(bytes32 indexed tokenHash, uint128 decimals);
+    event SetMaxBrokerCount(uint16 _oldMaxBrokerCount, uint16 _newMaxBrokerCount);
 
     /**
      * @dev Disable the initializer on the implementation contract
@@ -212,13 +215,39 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         emit SetTokenHashToIndex(_tokenHash, oldIndex, _index);
     }
 
+    // @dev Add broker hash and its index mapping
+    // @dev Only owner or broker manager role can call this function
+    // @dev For broker manager role, the broker index must be >= BROKER_MANAGER_INDEX_BASE
+    // @dev This is to avoid conflict with the brokers added by owner
     function setBrokerHash2Index(bytes32 _brokerHash, uint16 _index) external onlyOwnerOrRole(BROKER_MANAGER_ROLE) {
         require(_brokerHash != bytes32(0) && _index != 0, "Zero broker hash or index");
         require(brokerIndex2Hash[_index] == bytes32(0), "Broker index already used");
-        uint16 oldIndex = brokerHash2Index[_brokerHash];
+        require(brokerHash2Index[_brokerHash] == 0, "Broker already set");
+        if (msg.sender != owner()) {
+            require(
+                _index >= BROKER_MANAGER_INDEX_BASE || _index < BROKER_MANAGER_INDEX_BASE + maxBrokerCount,
+                "Broker index out of range"
+            );
+        }
         brokerHash2Index[_brokerHash] = _index;
         brokerIndex2Hash[_index] = _brokerHash;
-        emit SetBrokerHashToIndex(_brokerHash, oldIndex, _index);
+        emit SetBrokerHashToIndex(_brokerHash, 0, _index);
+    }
+
+    // @dev Reset broker hash and its index, in case of misconfiguration
+    // @dev Only owner can call this function
+    function resetBrokerHash2Index(bytes32 _brokerHash, uint16 _newIndex) external onlyOwner {
+        uint16 oldIndex = brokerHash2Index[_brokerHash];
+        brokerHash2Index[_brokerHash] = _newIndex;
+        brokerIndex2Hash[_newIndex] = _brokerHash;
+        emit SetBrokerHashToIndex(_brokerHash, oldIndex, _newIndex);
+    }
+
+    function setMaxBrokerCount(uint16 _maxBrokerCount) external onlyOwner {
+        require(_maxBrokerCount != 0, "Zero max broker count");
+        uint16 oldMaxBrokerCount = maxBrokerCount;
+        maxBrokerCount = _maxBrokerCount;
+        emit SetMaxBrokerCount(oldMaxBrokerCount, _maxBrokerCount);
     }
 
     function setTokenDecimalsOnSolana(bytes32 _tokenHash, uint128 _decimals) external onlyOwner {
@@ -239,7 +268,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         require(success, "Transfer failed");
     }
 
-    /* ================ Override AccessControlRevised To Simplify Access Control ================ */
+    /* ================ Override To Simplify Access Control ================ */
 
     /// @notice Override grantRole
     function grantRole(bytes32 role, address account) public override onlyOwner {
