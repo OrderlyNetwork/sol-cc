@@ -1,10 +1,16 @@
-pragma solidity ^0.8.22;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.20;
 
-import { OAppUpgradeable, MessagingFee, Origin } from "../layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppUpgradeable.sol";
-import { OptionsBuilder } from "../layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
-import { MessagingReceipt } from "../layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSenderUpgradeable.sol";
-import { MsgCodec } from "../library/MsgCodec.sol";
-import { AccountDepositSol } from "../interface/ILedger.sol";
+import {
+    OAppUpgradeable,
+    MessagingFee,
+    Origin
+} from "../../../contracts/layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppUpgradeable.sol";
+import {OptionsBuilder} from "../../../contracts/layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
+import {MessagingReceipt} from
+    "../../../contracts/layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSenderUpgradeable.sol";
+import {MsgCodec} from "../../../contracts/library/MsgCodec.sol";
+import {AccountDepositSol} from "../../../contracts/interface/ILedger.sol";
 
 contract SolanaMock is OAppUpgradeable {
     using OptionsBuilder for bytes;
@@ -33,33 +39,26 @@ contract SolanaMock is OAppUpgradeable {
         uint64 _tokenAmount
     ) external payable {
         depositNonce++;
-        
-        AccountDepositSol memory depositData = AccountDepositSol(
-            _accountId,
-            _brokerHash,
-            _userAddress,
-            _tokenHash,
-            _chainId,
-            _tokenAmount,
-            depositNonce
-        );
+
+        AccountDepositSol memory depositData =
+            AccountDepositSol(_accountId, _brokerHash, _userAddress, _tokenHash, _chainId, _tokenAmount, depositNonce);
 
         bytes memory payload = abi.encode(depositData);
         bytes memory lzDepositMsg = MsgCodec.encodeLzMsg(uint8(MsgCodec.MsgType.Deposit), payload);
-        
+
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
         MessagingFee memory msgFee = _quote(evmEid, lzDepositMsg, options, false);
-        
+
         _lzSend(evmEid, lzDepositMsg, options, msgFee, address(this));
 
         emit DepositReceived(_accountId, _brokerHash, _tokenHash, _chainId, _tokenAmount);
     }
 
     function _lzReceive(
-        Origin calldata /*_origin*/,
-        bytes32 /*_guid*/,
-        bytes calldata /*_message*/,
-        address /*_executor*/,
+        Origin calldata, /*_origin*/
+        bytes32, /*_guid*/
+        bytes calldata, /*_message*/
+        address, /*_executor*/
         bytes calldata /*_extraData*/
     ) internal virtual override {
         // Empty receive function as requested
