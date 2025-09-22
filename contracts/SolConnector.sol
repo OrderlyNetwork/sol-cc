@@ -203,8 +203,9 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         emit SetOrderDelivery(_orderDelivery, _inboundNonce);
     }
 
-    function setTokenHash2Index(bytes32 _tokenHash, uint8 _index) external onlyOwnerOrRole(SYMBOL_MANAGER_ROLE) {
+    function setTokenHash2Index(bytes32 _tokenHash, uint8 _index) external onlyOwner {
         require(_tokenHash != bytes32(0) && _index != 0, "Zero token hash or index");
+        require(tokenIndex2Hash[_index] == bytes32(0), "Token index already used");
         uint8 oldIndex = tokenHash2Index[_tokenHash];
         tokenHash2Index[_tokenHash] = _index;
         tokenIndex2Hash[_index] = _tokenHash;
@@ -213,6 +214,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
 
     function setBrokerHash2Index(bytes32 _brokerHash, uint16 _index) external onlyOwnerOrRole(BROKER_MANAGER_ROLE) {
         require(_brokerHash != bytes32(0) && _index != 0, "Zero broker hash or index");
+        require(brokerIndex2Hash[_index] == bytes32(0), "Broker index already used");
         uint16 oldIndex = brokerHash2Index[_brokerHash];
         brokerHash2Index[_brokerHash] = _index;
         brokerIndex2Hash[_index] = _brokerHash;
