@@ -20,8 +20,8 @@ library MsgCodec {
             // bytes32(_withdrawSolData.accountId),
             bytes32(_withdrawSolData.sender),
             bytes32(_withdrawSolData.receiver),
-            bytes32(_withdrawSolData.brokerHash),
-            // bytes32(_withdrawSolData.tokenHash),
+            uint16(_withdrawSolData.brokerIndex), // previous was broker hash, which led the transaction to Solana exceed the size limit
+            uint8(_withdrawSolData.tokenIndex), // previous was token hash, which led the transaction to Solana exceed the size limit
             uint64(_withdrawSolData.tokenAmount),
             uint64(_withdrawSolData.fee),
             uint64(_withdrawSolData.chainId),

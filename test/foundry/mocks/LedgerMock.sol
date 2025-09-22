@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.20;
 
-import "../interface/ILedger.sol";
-import "../SolConnector.sol";
+import "../../../contracts/interface/ILedger.sol";
+import "../../../contracts/SolConnector.sol";
 
 contract LedgerMock is ILedger {
     SolConnector public solConnector;
