@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-import {SolanaMock} from "./mocks/SolanaMock.sol";
-import {SolConnector} from "../../contracts/SolConnector.sol";
-import {SolConnectorMock} from "./mocks/SolConnectorMock.sol";
-import {LedgerMock} from "./mocks/LedgerMock.sol";
-import {MsgCodec} from "../../contracts/library/MsgCodec.sol";
+import { SolanaMock } from "./mocks/SolanaMock.sol";
+import { SolConnector } from "../../contracts/SolConnector.sol";
+import { SolConnectorMock } from "./mocks/SolConnectorMock.sol";
+import { LedgerMock } from "./mocks/LedgerMock.sol";
+import { MsgCodec } from "../../contracts/library/MsgCodec.sol";
 
-import {
-    IOAppOptionsType3,
-    EnforcedOptionParam
-} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OAppOptionsType3.sol";
-import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IOAppOptionsType3, EnforcedOptionParam } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OAppOptionsType3.sol";
+import { OptionsBuilder } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "forge-std/console.sol";
-import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {WithdrawDataSol} from "../../contracts/interface/ILedger.sol";
-import {Utils} from "../../contracts/library/Utils.sol";
+import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { WithdrawDataSol } from "../../contracts/interface/ILedger.sol";
+import { Utils } from "../../contracts/library/Utils.sol";
+import { BrokerIndexInterval } from "../../contracts/SolConnector.sol";
 
 contract SolConnectorTest is TestHelperOz5 {
     using OptionsBuilder for bytes;
@@ -111,7 +109,7 @@ contract SolConnectorTest is TestHelperOz5 {
         vm.expectEmit(true, true, true, true);
         emit SolanaMock.DepositReceived(accountId, brokerHash, tokenHash, chainId, tokenAmount);
 
-        solanaVaultMock.deposit{value: 1 ether}(accountId, brokerHash, userAddress, tokenHash, chainId, tokenAmount);
+        solanaVaultMock.deposit{ value: 1 ether }(accountId, brokerHash, userAddress, tokenHash, chainId, tokenAmount);
 
         assertEq(solanaVaultMock.depositNonce(), 1);
     }
@@ -249,5 +247,55 @@ contract SolConnectorTest is TestHelperOz5 {
         address newSolConnector = address(0x456);
         ledger.setSolConnector(newSolConnector);
         assertEq(address(ledger.solConnector()), newSolConnector);
+    }
+
+    function test_setBrokerIndex() public {
+        address brokerManager1 = address(bytes20(keccak256("brokerManager1")));
+
+        solCC.grantRole(solCC.BROKER_MANAGER_ROLE(), brokerManager1);
+        assertEq(solCC.hasRole(solCC.BROKER_MANAGER_ROLE(), brokerManager1), true);
+
+        BrokerIndexInterval memory interval1 = BrokerIndexInterval(18000, 18100);
+        solCC.setBrokerIndexInterval(brokerManager1, interval1.start, interval1.end);
+
+        bytes32 testBroker1 = keccak256("testBroker1");
+
+        vm.startPrank(brokerManager1);
+        vm.expectRevert("Broker index out of broker manager interval");
+        solCC.setBrokerHash2Index(testBroker1, 17999);
+        vm.expectRevert("Broker index out of broker manager interval");
+        solCC.setBrokerHash2Index(testBroker1, 18100);
+        vm.expectEmit();
+        emit SolConnector.SetBrokerHashToIndex(testBroker1, 0, 18001);
+        solCC.setBrokerHash2Index(testBroker1, 18001);
+
+        bytes32 testBroker2 = keccak256("testBroker2");
+        vm.expectRevert("Broker index already used");
+        solCC.setBrokerHash2Index(testBroker2, 18001);
+
+        vm.expectRevert("Broker already set");
+        solCC.setBrokerHash2Index(testBroker1, 18000);
+        vm.stopPrank();
+
+        vm.expectEmit();
+        emit SolConnector.SetBrokerHashToIndex(testBroker1, 18001, 123);
+        solCC.resetBrokerHash2Index(testBroker1, 123);
+
+        assertEq(solCC.brokerIndex2Hash(18001), bytes32(0));
+        assertEq(solCC.brokerIndex2Hash(123), testBroker1);
+        assertEq(solCC.brokerHash2Index(testBroker1), 123);
+
+        address brokerManager2 = address(bytes20(keccak256("brokerManager2")));
+
+        vm.startPrank(address(ledger));
+        vm.expectRevert("Not broker manager");
+        solCC.setBrokerFromLedger(brokerManager2, testBroker2, 18002);
+        vm.expectEmit();
+        emit SolConnector.SetBrokerHashToIndex(testBroker2, 0, 18002);
+        solCC.setBrokerFromLedger(brokerManager1, testBroker2, 18002);
+        vm.stopPrank();
+
+        vm.expectRevert("Only ledger can call this function");
+        solCC.setBrokerFromLedger(brokerManager1, testBroker2, 18002);
     }
 }

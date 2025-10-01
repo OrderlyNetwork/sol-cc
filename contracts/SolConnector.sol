@@ -17,6 +17,11 @@ struct LzOptions {
     uint128 value;
 }
 
+struct BrokerIndexInterval {
+    uint16 start; // inclusive
+    uint16 end; // exclusive
+}
+
 contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnector {
     ILedger public ledger;
     mapping(uint8 => LzOptions) public msgOptions;
@@ -36,10 +41,10 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     mapping(uint16 => bytes32) public brokerIndex2Hash;
     mapping(bytes32 => uint128) public tokenDecimalsOnSolana;
     mapping(bytes32 => uint128) public tokenDecimalsOnOrderly;
-    uint16 public maxBrokerCount; // max broker count, added by broker manager
+    uint16 public maxBrokerCount; // deprecated: max broker count, added by broker manager
+    mapping(address => BrokerIndexInterval) public brokerManager2IndexInterval;
 
     // /* ================ Constants ================ */
-    uint16 public constant BROKER_MANAGER_INDEX_BASE = 18000; // Broker index for broker manager role starts from 18000 to avoid conflict with the brokers added by owner
 
     bytes32 public constant SYMBOL_MANAGER_ROLE = keccak256("ORDERLY_MANAGER_SYMBOL_MANAGER_ROLE");
 
@@ -66,6 +71,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     event SetTokenDecimalsOnSolana(bytes32 indexed tokenHash, uint128 decimals);
     event SetTokenDecimalsOnOrderly(bytes32 indexed tokenHash, uint128 decimals);
     event SetMaxBrokerCount(uint16 _oldMaxBrokerCount, uint16 _newMaxBrokerCount);
+    event SetBrokerIndexInterval(address indexed brokerManager, uint16 start, uint16 end);
 
     /**
      * @dev Disable the initializer on the implementation contract
@@ -175,6 +181,16 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
     }
 
+    function setBrokerFromLedger(address brokerManager, bytes32 brokerHash, uint16 brokerIndex) external onlyLedger {
+        if (brokerManager != owner()) {
+            require(hasRole(BROKER_MANAGER_ROLE, brokerManager), "Not broker manager");
+            _checkBrokerIndex(brokerManager, brokerHash, brokerIndex);
+        }
+        brokerHash2Index[brokerHash] = brokerIndex;
+        brokerIndex2Hash[brokerIndex] = brokerHash;
+        emit SetBrokerHashToIndex(brokerHash, 0, brokerIndex);
+    }
+
     function nextNonce(uint32 /*_srcEid*/, bytes32 /*_sender*/) public view override returns (uint64 nonce) {
         if (orderDelivery) {
             nonce = inboundNonce + 1;
@@ -221,14 +237,8 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
     // @dev This is to avoid conflict with the brokers added by owner
     // @dev This function call will revert if there is some misconfiguration for the broker hash or index
     function setBrokerHash2Index(bytes32 _brokerHash, uint16 _index) external onlyOwnerOrRole(BROKER_MANAGER_ROLE) {
-        require(_brokerHash != bytes32(0) && _index != 0, "Zero broker hash or index");
-        require(brokerIndex2Hash[_index] == bytes32(0), "Broker index already used");
-        require(brokerHash2Index[_brokerHash] == 0, "Broker already set");
         if (msg.sender != owner()) {
-            require(
-                _index >= BROKER_MANAGER_INDEX_BASE || _index < BROKER_MANAGER_INDEX_BASE + maxBrokerCount,
-                "Broker index out of range"
-            );
+            _checkBrokerIndex(msg.sender, _brokerHash, _index);
         }
         brokerHash2Index[_brokerHash] = _index;
         brokerIndex2Hash[_index] = _brokerHash;
@@ -250,6 +260,15 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         uint16 oldMaxBrokerCount = maxBrokerCount;
         maxBrokerCount = _maxBrokerCount;
         emit SetMaxBrokerCount(oldMaxBrokerCount, _maxBrokerCount);
+    }
+
+    // @notice Becareful about the index intervals, no two intervals should be overlapped.
+    // @notice Refer to the doc to prevent from error configuration: https://orderly-network.atlassian.net/wiki/spaces/ORDER/pages/38240261/Broker+Index+Interval
+    function setBrokerIndexInterval(address _brokerManager, uint16 _start, uint16 _end) external onlyOwner {
+        require(hasRole(BROKER_MANAGER_ROLE, _brokerManager), "Not broker manager");
+        require(_start < _end, "Invalid interval");
+        brokerManager2IndexInterval[_brokerManager] = BrokerIndexInterval(_start, _end);
+        emit SetBrokerIndexInterval(_brokerManager, _start, _end);
     }
 
     function setTokenDecimalsOnSolana(bytes32 _tokenHash, uint128 _decimals) external onlyOwner {
@@ -305,6 +324,19 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         } else {
             return tokenAmount * uint128(10 ** (dstDecimal - srcDecimal));
         }
+    }
+
+    // =========================== Internal functions ===========================
+
+    function _checkBrokerIndex(address _brokerManager, bytes32 _brokerHash, uint16 _brokerIndex) internal view {
+        require(_brokerHash != bytes32(0) && _brokerIndex != 0, "Zero broker hash or index");
+        require(brokerIndex2Hash[_brokerIndex] == bytes32(0), "Broker index already used");
+        require(brokerHash2Index[_brokerHash] == 0, "Broker already set");
+        BrokerIndexInterval storage interval = brokerManager2IndexInterval[_brokerManager];
+        require(
+            _brokerIndex >= interval.start && _brokerIndex < interval.end,
+            "Broker index out of broker manager interval"
+        );
     }
 
     fallback() external payable {}
