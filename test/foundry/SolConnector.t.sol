@@ -13,7 +13,7 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "forge-std/console.sol";
 import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import { WithdrawDataSol } from "../../contracts/interface/ILedger.sol";
+import { WithdrawDataSol, Withdraw2ContractV2, ChainType, VaultEnum } from "../../contracts/interface/ILedger.sol";
 import { Utils } from "../../contracts/library/Utils.sol";
 import { BrokerIndexInterval } from "../../contracts/SolConnector.sol";
 
@@ -241,6 +241,47 @@ contract SolConnectorTest is TestHelperOz5 {
         });
 
         ledger.mockWithdraw(withdrawData);
+    }
+
+    function test_withdraw_contractv2() public {
+        Withdraw2ContractV2 memory data = Withdraw2ContractV2({
+            tokenAmount: 100,
+            fee: 1,
+            senderChainType: ChainType.EVM,
+            receiverChainType: ChainType.SOL,
+            chainId: 901901901,
+            accountId: keccak256("accountId"),
+            vaultType: VaultEnum.Ceffu,
+            sender: Utils.toBytes32(address(123)),
+            withdrawNonce: 11,
+            receiver: keccak256("receiver"),
+            timestamp: 1234,
+            brokerHash: keccak256("woofi_pro"),
+            tokenHash: keccak256("USDC"),
+            clientId: 12
+        });
+        ledger.mockWithdraw2ContractV2(data);
+    }
+
+    function test_withdraw_contractv2_with_wrong_chaintype() public {
+        Withdraw2ContractV2 memory data = Withdraw2ContractV2({
+            tokenAmount: 100,
+            fee: 1,
+            senderChainType: ChainType.EVM,
+            receiverChainType: ChainType.EVM,
+            chainId: 901901901,
+            accountId: keccak256("accountId"),
+            vaultType: VaultEnum.Ceffu,
+            sender: Utils.toBytes32(address(123)),
+            withdrawNonce: 11,
+            receiver: keccak256("receiver"),
+            timestamp: 1234,
+            brokerHash: keccak256("woofi_pro"),
+            tokenHash: keccak256("USDC"),
+            clientId: 12
+        });
+        vm.expectRevert("Wrong receiver chain type");
+        ledger.mockWithdraw2ContractV2(data);
     }
 
     function test_setSolConnector() public {
