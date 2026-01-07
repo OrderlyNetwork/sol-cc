@@ -7,7 +7,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { OptionsBuilder } from "./layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 import { OAppUpgradeable, MessagingFee, Origin } from "./layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppUpgradeable.sol";
 import { MessagingReceipt } from "./layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSenderUpgradeable.sol";
-import { ILedger, AccountDepositSol, AccountWithdrawSol, WithdrawDataSol, Withdraw2ContractV2 } from "./interface/ILedger.sol";
+import { ILedger, AccountDepositSol, AccountWithdrawSol, WithdrawDataSol, Withdraw2ContractV2, ChainType } from "./interface/ILedger.sol";
 import { Utils } from "./library/Utils.sol";
 import { ISolConnector } from "./interface/ISolConnector.sol";
 import { MsgCodec } from "./library/MsgCodec.sol";
@@ -123,13 +123,11 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
 
     function withdraw(WithdrawDataSol calldata _withdrawData) external onlyLedger whenNotPaused {
         bytes32 tokenHash = Utils.calculateStringHash(_withdrawData.tokenSymbol);
-        uint8 tokenIndex = tokenHash2Index[tokenHash];
-        require(tokenIndex != 0, "Token index not set");
         bytes32 brokerHash = Utils.calculateStringHash(_withdrawData.brokerId);
-        uint16 brokerIndex = brokerHash2Index[brokerHash];
-        require(brokerIndex != 0, "Broker index not set");
+
+        (uint8 tokenIndex, uint16 brokerIndex) = _resolveTokenAndBrokerIndex(tokenHash, brokerHash);
+
         AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
-            // Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
             _withdrawData.sender,
             _withdrawData.receiver,
             brokerIndex,
@@ -140,45 +138,33 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
             _withdrawData.withdrawNonce
         );
 
-        bytes memory payload = MsgCodec.encodeWithdrawPayload(withdrawData);
-        bytes memory lzWithdrawMsg = MsgCodec.encodeLzMsg(uint8(MsgCodec.MsgType.Withdraw), payload);
-        bytes memory withdrawOptions = OptionsBuilder.newOptions().addExecutorLzReceiveOption(
-            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
-            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
-        );
-        MessagingFee memory _msgFee = _quote(solEid, lzWithdrawMsg, withdrawOptions, false);
-        _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
+        _sendWithdrawSolMessage(withdrawData, uint8(MsgCodec.WithdrawType.FromSolSender));
     }
 
-    function withdraw2ContractV2(
-        Withdraw2ContractV2 calldata _withdraw2ContractV2Data
-    ) external onlyLedger whenNotPaused {
-        bytes32 tokenHash = _withdraw2ContractV2Data.tokenHash;
-        uint8 tokenIndex = tokenHash2Index[tokenHash];
-        require(tokenIndex != 0, "Token index not set");
-        bytes32 brokerHash = _withdraw2ContractV2Data.brokerHash;
-        uint16 brokerIndex = brokerHash2Index[brokerHash];
-        require(brokerIndex != 0, "Broker index not set");
-        AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
-            // Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
-            _withdraw2ContractV2Data.sender,
-            _withdraw2ContractV2Data.receiver,
-            brokerIndex,
-            tokenIndex,
-            convertWithdrawDecimals(tokenHash, _withdraw2ContractV2Data.tokenAmount),
-            convertWithdrawDecimals(tokenHash, _withdraw2ContractV2Data.fee),
-            _withdraw2ContractV2Data.chainId,
-            _withdraw2ContractV2Data.withdrawNonce
+    function withdraw2ContractV2(Withdraw2ContractV2 calldata _withdrawData) external onlyLedger whenNotPaused {
+        require(_withdrawData.receiverChainType == ChainType.SOL, "Wrong receiver chain type");
+        (uint8 tokenIndex, uint16 brokerIndex) = _resolveTokenAndBrokerIndex(
+            _withdrawData.tokenHash,
+            _withdrawData.brokerHash
         );
 
-        bytes memory payload = MsgCodec.encodeWithdrawPayload(withdrawData);
-        bytes memory lzWithdrawMsg = MsgCodec.encodeLzMsg(uint8(MsgCodec.MsgType.Withdraw), payload);
-        bytes memory withdrawOptions = OptionsBuilder.newOptions().addExecutorLzReceiveOption(
-            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
-            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
+        AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
+            _withdrawData.sender,
+            _withdrawData.receiver,
+            brokerIndex,
+            tokenIndex,
+            convertWithdrawDecimals(_withdrawData.tokenHash, _withdrawData.tokenAmount),
+            convertWithdrawDecimals(_withdrawData.tokenHash, _withdrawData.fee),
+            _withdrawData.chainId,
+            _withdrawData.withdrawNonce
         );
-        MessagingFee memory _msgFee = _quote(solEid, lzWithdrawMsg, withdrawOptions, false);
-        _lzSend(solEid, lzWithdrawMsg, withdrawOptions, _msgFee, address(this));
+
+        // Determine withdraw type based on sender chain type
+        uint8 withdrawType = _withdrawData.senderChainType == ChainType.EVM
+            ? uint8(MsgCodec.WithdrawType.FromEvmSender)
+            : uint8(MsgCodec.WithdrawType.FromSolSender);
+
+        _sendWithdrawSolMessage(withdrawData, withdrawType);
     }
 
     function setBrokerFromLedger(address brokerManager, bytes32 brokerHash, uint16 brokerIndex) external onlyLedger {
@@ -337,6 +323,32 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
             _brokerIndex >= interval.start && _brokerIndex < interval.end,
             "Broker index out of broker manager interval"
         );
+    }
+
+    function _resolveTokenAndBrokerIndex(
+        bytes32 _tokenHash,
+        bytes32 _brokerHash
+    ) internal view returns (uint8 tokenIndex, uint16 brokerIndex) {
+        tokenIndex = tokenHash2Index[_tokenHash];
+        require(tokenIndex != 0, "Token index not set");
+
+        brokerIndex = brokerHash2Index[_brokerHash];
+        require(brokerIndex != 0, "Broker index not set");
+    }
+
+    function _sendWithdrawSolMessage(AccountWithdrawSol memory withdrawData, uint8 withdrawType) internal {
+        bytes memory payload = MsgCodec.encodeWithdrawPayload(withdrawData);
+
+        bytes memory lzWithdrawMsg = MsgCodec.encodeLzMsg(withdrawType, payload);
+
+        bytes memory withdrawOptions = OptionsBuilder.newOptions().addExecutorLzReceiveOption(
+            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].gas,
+            msgOptions[uint8(MsgCodec.MsgType.Withdraw)].value
+        );
+
+        MessagingFee memory msgFee = _quote(solEid, lzWithdrawMsg, withdrawOptions, false);
+
+        _lzSend(solEid, lzWithdrawMsg, withdrawOptions, msgFee, address(this));
     }
 
     fallback() external payable {}

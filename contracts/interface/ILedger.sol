@@ -56,7 +56,8 @@ enum VaultEnum {
 struct Withdraw2ContractV2 {
     uint128 tokenAmount;
     uint128 fee;
-    ChainType chainType;
+    ChainType senderChainType;
+    ChainType receiverChainType;
     uint256 chainId; // target withdraw chain
     bytes32 accountId;
     VaultEnum vaultType;
