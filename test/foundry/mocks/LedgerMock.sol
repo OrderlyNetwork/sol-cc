@@ -16,8 +16,12 @@ contract LedgerMock is ILedger {
     }
 
     // New function to mock withdraw
-    function mockWithdraw(WithdrawDataSol calldata withdrawData) external {
-        solConnector.withdraw(withdrawData);
+    function mockWithdraw(WithdrawDataSol calldata data) external {
+        solConnector.withdraw(data);
+    }
+
+    function mockWithdraw2ContractV2(Withdraw2ContractV2 calldata data) external {
+        solConnector.withdraw2ContractV2(data);
     }
 
     // Function to set SolConnector address (in case it needs to be updated)

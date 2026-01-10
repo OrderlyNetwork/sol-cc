@@ -8,20 +8,22 @@ library MsgCodec {
 
     enum MsgType {
         Deposit,
-        Withdraw,
-        RebalanceBurn,
-        RebalanceMint
+        Withdraw
+    }
+
+    enum WithdrawType {
+        FromEvmSender,
+        FromSolSender
     }
 
     function encodeWithdrawPayload(
         AccountWithdrawSol memory _withdrawSolData
     ) internal pure returns (bytes memory withdrawSolPayload) {
         withdrawSolPayload = abi.encodePacked(
-            // bytes32(_withdrawSolData.accountId),
             bytes32(_withdrawSolData.sender),
             bytes32(_withdrawSolData.receiver),
-            uint16(_withdrawSolData.brokerIndex), // previous was broker hash, which led the transaction to Solana exceed the size limit
-            uint8(_withdrawSolData.tokenIndex), // previous was token hash, which led the transaction to Solana exceed the size limit
+            uint16(_withdrawSolData.brokerIndex),
+            uint8(_withdrawSolData.tokenIndex),
             uint64(_withdrawSolData.tokenAmount),
             uint64(_withdrawSolData.fee),
             uint64(_withdrawSolData.chainId),
