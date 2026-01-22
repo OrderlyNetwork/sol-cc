@@ -13,9 +13,10 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "forge-std/console.sol";
 import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import { WithdrawDataSol, Withdraw2ContractV2, ChainType, VaultEnum } from "../../contracts/interface/ILedger.sol";
+import { WithdrawDataSol, Withdraw2ContractV2, ChainType, VaultEnum, AccountWithdrawSol } from "../../contracts/interface/ILedger.sol";
 import { Utils } from "../../contracts/library/Utils.sol";
 import { BrokerIndexInterval } from "../../contracts/SolConnector.sol";
+import { MsgCodec } from "../../contracts/library/MsgCodec.sol";
 
 contract SolConnectorTest is TestHelperOz5 {
     using OptionsBuilder for bytes;
@@ -338,5 +339,27 @@ contract SolConnectorTest is TestHelperOz5 {
 
         vm.expectRevert("Only ledger can call this function");
         solCC.setBrokerFromLedger(brokerManager1, testBroker2, 18002);
+    }
+
+    function test_msg_codec() public {
+        // AccountWithdrawSol memory withdrawData, uint8 withdrawType
+        AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
+            bytes32(uint256(1)),
+            bytes32(uint256(1)),
+            bytes32(uint256(1)),
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+        );
+
+        bytes memory encodePayload = MsgCodec.encodeWithdrawPayload(withdrawData);
+
+        bytes
+            memory realPaylod = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010001010000000000000001000000000000000100000000000000010000000000000001";
+
+        assertEq(encodePayload, realPaylod, "encodeWithdrawPayload failed");
     }
 }

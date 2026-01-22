@@ -128,6 +128,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         (uint8 tokenIndex, uint16 brokerIndex) = _resolveTokenAndBrokerIndex(tokenHash, brokerHash);
 
         AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
+            Utils.getSolAccountId(_withdrawData.sender, _withdrawData.brokerId),
             _withdrawData.sender,
             _withdrawData.receiver,
             brokerIndex,
@@ -149,6 +150,7 @@ contract SolConnector is OAppUpgradeable, AccessControlUpgradeable, ISolConnecto
         );
 
         AccountWithdrawSol memory withdrawData = AccountWithdrawSol(
+            _withdrawData.accountId,
             _withdrawData.sender,
             _withdrawData.receiver,
             brokerIndex,
