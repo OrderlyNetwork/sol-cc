@@ -15,11 +15,11 @@ struct AccountDepositSol {
 
 // AccountTypes
 struct AccountWithdrawSol {
-    // bytes32 accountId;
+    bytes32 accountId;
     bytes32 sender;
     bytes32 receiver;
     uint16 brokerIndex;
-    uint8 tokenIndex; // previous was bytes32 tokenHash, which could result in exceeding the solana tx size limit
+    uint8 tokenIndex;
     uint128 tokenAmount;
     uint128 fee;
     uint256 chainId;
